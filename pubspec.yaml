@@ -1,0 +1,30 @@
+name: sisste_app
+description: "SISSTeApp — Aplicación móvil del Sistema Interno para la Solicitud de Soporte Técnico (SISSTe). SUNDDE."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+
+  # Cliente HTTP con timeouts configurables e interceptores.
+  # Se usa Dio en vez de http porque necesitamos control fino de
+  # connectTimeout/receiveTimeout para tolerar redes lentas (3G),
+  # tal como se discutió para SISSTeApp.
+  dio: ^5.4.3+1
+
+  # Almacenamiento seguro del token JWT en el dispositivo
+  # (Keystore en Android / Keychain en iOS), exigido por RNF-APP-01.
+  flutter_secure_storage: ^9.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

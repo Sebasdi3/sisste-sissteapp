@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+        Permite tráfico HTTP sin cifrar SOLO hacia el servidor SISSTe
+        dentro de la red interna de la SUNDDE (172.17.102.202).
+        Esto es una excepción puntual y documentada mientras el
+        Apache del backend no tenga TLS funcional (ver README,
+        sección de deuda técnica). El resto del tráfico de la app
+        sigue exigiendo HTTPS por defecto.
+    -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">172.17.102.202</domain>
+    </domain-config>
+</network-security-config>
