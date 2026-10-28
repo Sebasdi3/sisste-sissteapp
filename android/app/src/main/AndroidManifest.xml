@@ -1,7 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Sin este permiso el APK de release no puede conectarse al servidor
+         (Flutter solo lo agrega por su cuenta en las compilaciones debug). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="sisste_app"
-	android:networkSecurityConfig="@xml/network_security_config"
+        android:label="SISSTeApp"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -41,6 +45,15 @@
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
+        </intent>
+        <!-- Para abrir la constancia (PDF) con el visor del teléfono. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/pdf"/>
+        </intent>
+        <!-- Para abrir la cámara desde "Foto de la falla". -->
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE"/>
         </intent>
     </queries>
 </manifest>

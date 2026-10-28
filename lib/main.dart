@@ -1,11 +1,29 @@
 import 'package:flutter/material.dart';
 
+import 'core/api_client.dart';
 import 'core/secure_session.dart';
-import 'screens/home_placeholder_screen.dart';
+import 'models/auth_models.dart';
 import 'screens/login_screen.dart';
-import 'theme/app_colors.dart';
+import 'screens/main_shell.dart';
+import 'services/auth_service.dart';
+import 'theme/app_theme.dart';
+import 'widgets/transiciones.dart';
 
-void main() {
+/// Permite navegar al login desde fuera de un widget (cuando el
+/// servidor avisa que la sesión venció).
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ApiClient.instance.init();
+
+  ApiClient.instance.onSessionExpired = () {
+    navigatorKey.currentState?.pushAndRemoveUntil(
+      slideRoute(const LoginScreen()),
+      (route) => false,
+    );
+  };
+
   runApp(const SisstApp());
 }
 
@@ -16,52 +34,69 @@ class SisstApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SISSTeApp',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          brightness: Brightness.dark,
-        ),
-        scaffoldBackgroundColor: AppColors.background,
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white10,
-          labelStyle: TextStyle(color: Colors.white70),
-        ),
-      ),
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      // Claro u oscuro según el ajuste del sistema.
+      themeMode: ThemeMode.system,
       home: const _SessionGate(),
     );
   }
 }
 
-/// Verifica al abrir la app si ya existe un token JWT guardado
-/// (RNF-APP-01) y salta directamente a la pantalla principal en ese
-/// caso, evitando pedir credenciales en cada apertura de la app.
+/// Al abrir la app decide a dónde ir:
 ///
-/// Nota: esto valida solo la PRESENCIA del token en el dispositivo,
-/// no su vigencia contra el servidor. La verificación de expiración
-/// del JWT contra el backend es una mejora natural para un sprint
-/// posterior si el equipo decide incorporarla.
-class _SessionGate extends StatelessWidget {
+/// - Sin marcador local de sesión -> login.
+/// - Con "Mantener sesión" desmarcada al iniciar -> cierra esa sesión
+///   y pide iniciar de nuevo.
+/// - Con marcador: le pregunta al servidor si la sesión sigue viva
+///   (la cookie dura 8 h y se pierde si el servidor se reinicia).
+///   Vigente -> Home. Vencida -> limpia y va al login. Si no hay red
+///   para preguntar, se deja entrar con el marcador local; si la sesión
+///   ya no sirve, la primera petición real recibirá 401 y ApiClient
+///   mandará al login.
+class _SessionGate extends StatefulWidget {
   const _SessionGate();
+
+  @override
+  State<_SessionGate> createState() => _SessionGateState();
+}
+
+class _SessionGateState extends State<_SessionGate> {
+  late final Future<bool> _hasSession = _resolve();
+
+  Future<bool> _resolve() async {
+    if (!await SecureSession.instance.hasActiveSession()) return false;
+
+    final auth = AuthService();
+
+    if (!await SecureSession.instance.readKeepSession()) {
+      await auth.logout();
+      return false;
+    }
+
+    final status = await auth.checkSession();
+    if (status == SessionStatus.expired) {
+      await auth.clearLocalSession();
+      return false;
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<bool>(
-      future: SecureSession.instance.hasActiveSession(),
+      future: _hasSession,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
-            backgroundColor: AppColors.background,
-            body: Center(
-              child: CircularProgressIndicator(color: AppColors.accent),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
-
-        final hasSession = snapshot.data ?? false;
-        return hasSession ? const HomePlaceholderScreen() : const LoginScreen();
+        return (snapshot.data ?? false)
+            ? const MainShell()
+            : const LoginScreen();
       },
     );
   }
